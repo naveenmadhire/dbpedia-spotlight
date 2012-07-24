@@ -31,7 +31,8 @@ import org.dbpedia.spotlight.lucene.search.MergedOccurrencesContextSearcher
 import org.dbpedia.spotlight.lucene.LuceneManager.DBpediaResourceField
 import java.io.StringReader
 import org.dbpedia.spotlight.db.model.TopicalPriorStore
-import org.dbpedia.spotlight.topics.TopicExtractor
+import org.dbpedia.spotlight.topic.TopicalClassifier
+
 
 /**
  *
@@ -39,6 +40,7 @@ import org.dbpedia.spotlight.topics.TopicExtractor
  */
 class TopicBiasedDisambiguator(val candidateSearcher: CandidateSearcher,
                                val contextSearcher: MergedOccurrencesContextSearcher, //TODO should be ContextSearcher. Need a generic disambiguator to enable this.
+                               val topicClassifier: TopicalClassifier,
                                val topicalPriorStore: TopicalPriorStore)
     extends ParagraphDisambiguator {
 
@@ -104,7 +106,7 @@ class TopicBiasedDisambiguator(val candidateSearcher: CandidateSearcher,
         occs
     }
 
-    def getTopicalScore(textTopics: Map[String, Double], resource: DBpediaResource): Double = {
+    def getTopicalScore(textTopics: Map[Topic, Double], resource: DBpediaResource): Double = {
         //TODO Topic->Double
         val resourceTopicCounts = topicalPriorStore.getTopicalPriorCounts(resource)
         val topicTotals = topicalPriorStore.getTotalCounts()
@@ -120,7 +122,7 @@ class TopicBiasedDisambiguator(val candidateSearcher: CandidateSearcher,
                 val logTS = if (textScore==0) 0.0 else math.log(textScore)
                 logRP + logTS
             }
-        }.sum
+        }.max
         math.exp(score)
     }
 
@@ -130,7 +132,8 @@ class TopicBiasedDisambiguator(val candidateSearcher: CandidateSearcher,
 
         if (paragraph.occurrences.size == 0) return Map[SurfaceFormOccurrence, List[DBpediaResourceOccurrence]]()
 
-        val topics = TopicExtractor.getTopics(paragraph.text.text)
+        //val topics = TopicExtractorClient.getTopics(paragraph.text.text)
+        val topics = topicClassifier.getPredictions(paragraph.text).toMap
 
         //        val m1 = if (candLuceneManager.getDBpediaResourceFactory == null) "lucene" else "jdbc"
         //        val m2 = if (contextLuceneManager.getDBpediaResourceFactory == null) "lucene" else "jdbc"
@@ -152,12 +155,14 @@ class TopicBiasedDisambiguator(val candidateSearcher: CandidateSearcher,
         }
         // LOG.debug("Hits (%d): %s".format(hits.size, hits.map( sd => "%s=%s".format(sd.doc,sd.score) ).mkString(",")))
 
+        println(topics.toList.sortBy(_._2).reverse,"\n",paragraph.text.text)
         // LOG.debug("Reading DBpediaResources.")
         val scores = hits
             .foldRight(Map[String, Tuple2[DBpediaResource, Double]]())((hit, acc) => {
             var resource: DBpediaResource = contextSearcher.getDBpediaResource(hit.doc) //this method returns resource.support=c(r)
             val topicalScore = getTopicalScore(topics, resource)
-            var score = if (topicalScore == 0.0) hit.score else (hit.score * topicalScore)
+            var score = if (topicalScore == 0.0) hit.score else (hit.score * (1 + (hit.score * topicalScore)))
+            println("%s (%.4f,%.4f,%.4f)".format(resource.uri,hit.score,topicalScore,score))
             //TODO can mix here the scores: c(s,r) / c(r)
             acc + (resource.uri ->(resource, score))
         });

@@ -21,7 +21,6 @@ package org.dbpedia.spotlight.model;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.apache.lucene.analysis.Analyzer;
-import org.apache.lucene.analysis.StopAnalyzer;
 import org.apache.lucene.search.BooleanQuery;
 import org.dbpedia.spotlight.exceptions.ConfigurationException;
 
@@ -149,6 +148,12 @@ public class SpotlightConfiguration {
         return disambiguatorConfiguration;
     }
 
+    protected TopicalClassificationConfiguration classificationConfiguration;
+
+    public TopicalClassificationConfiguration getClassificationConfiguration() {
+        return classificationConfiguration;
+    }
+
     public Analyzer getAnalyzer() {
         return analyzer;
     }
@@ -171,6 +176,8 @@ public class SpotlightConfiguration {
 		spotterConfiguration = new SpotterConfiguration(fileName);
 
         disambiguatorConfiguration = new DisambiguatorConfiguration(fileName);
+
+        classificationConfiguration = new TopicalClassificationConfiguration(fileName);
 
 		//set spotterFile, indexDir...
 		contextIndexDirectory = disambiguatorConfiguration.contextIndexDirectory;
