@@ -19,20 +19,14 @@
 package org.dbpedia.spotlight.disambiguate
 
 import org.apache.commons.logging.LogFactory
-import org.dbpedia.spotlight.lucene.disambiguate.MergedOccurrencesDisambiguator
 import java.lang.UnsupportedOperationException
 import scalaj.collection.Imports._
-import org.apache.lucene.search.similar.MoreLikeThis
 import org.dbpedia.spotlight.exceptions.{ItemNotFoundException, SearchException, InputException}
-import org.apache.lucene.search.{ScoreDoc, Explanation}
+import org.apache.lucene.search.Explanation
 import org.dbpedia.spotlight.model._
-import org.apache.lucene.index.Term
 import com.officedepot.cdap2.collection.CompactHashSet
-import org.dbpedia.spotlight.lucene.search.MergedOccurrencesContextSearcher
-import org.dbpedia.spotlight.lucene.LuceneManager.DBpediaResourceField
-import java.io.StringReader
 import org.dbpedia.spotlight.db.model.TopicalPriorStore
-import org.dbpedia.spotlight.topics.TopicExtractor
+import org.dbpedia.spotlight.topic.{TopicalClassifier, TopicExtractorClient}
 
 /**
  * Uses only topic prior to decide on disambiguation.
@@ -40,7 +34,9 @@ import org.dbpedia.spotlight.topics.TopicExtractor
  *
  * @author pablomendes
  */
-class TopicalDisambiguator(val candidateSearcher: CandidateSearcher,val topicalPriorStore: TopicalPriorStore)
+class TopicalDisambiguator(val candidateSearcher: CandidateSearcher,
+                           val topicClassifier: TopicalClassifier,
+                           val topicalPriorStore: TopicalPriorStore)
     extends ParagraphDisambiguator {
 
     private val LOG = LogFactory.getLog(this.getClass)
@@ -83,7 +79,7 @@ class TopicalDisambiguator(val candidateSearcher: CandidateSearcher,val topicalP
         occs
     }
 
-    def getTopicalScore(textTopics: Map[String,Double], resource: DBpediaResource) : Double = {//TODO Topic->Double
+    def getTopicalScore(textTopics: Map[Topic,Double], resource: DBpediaResource) : Double = {//TODO Topic->Double
         val resourceTopicCounts = topicalPriorStore.getTopicalPriorCounts(resource)
         val topicTotals = topicalPriorStore.getTotalCounts()
         LOG.trace("resource: %s".format(resource.uri))
@@ -110,7 +106,7 @@ class TopicalDisambiguator(val candidateSearcher: CandidateSearcher,val topicalP
 
         if (paragraph.occurrences.size == 0) return Map[SurfaceFormOccurrence, List[DBpediaResourceOccurrence]]()
 
-        val topics = TopicExtractor.getTopics(paragraph.text.text)
+        val topics = TopicExtractorClient.getTopics(paragraph.text.text)
         LOG.trace("text: %s".format(topics.filter(_._2>0).toMap.toString))
 
         //        val m1 = if (candLuceneManager.getDBpediaResourceFactory == null) "lucene" else "jdbc"

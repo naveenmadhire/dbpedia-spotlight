@@ -93,6 +93,7 @@ class SpotlightFactory(val configuration: SpotlightConfiguration) {
 
     val spotters = new java.util.HashMap[SpotterConfiguration.SpotterPolicy,Spotter]()
     val disambiguators = new java.util.HashMap[SpotlightConfiguration.DisambiguationPolicy,ParagraphDisambiguatorJ]()
+    val topicalClassifier = configuration.getClassificationConfiguration.getClassifier
 
     //populate
     LOG.info("Initiating spotters...")
@@ -162,8 +163,7 @@ class SpotlightFactory(val configuration: SpotlightConfiguration) {
     }
 
     def annotator() ={
-        new DefaultAnnotator(spotter(), new MergedOccurrencesDisambiguator(contextSearcher))
-        //new DefaultParagraphAnnotator(spotter(), disambiguator())
+        new DefaultParagraphAnnotator(spotter(), disambiguator())
     }
 
     def filter() ={
