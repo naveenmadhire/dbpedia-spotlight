@@ -146,10 +146,11 @@ abstract class DBSpotter(
     }
 
     if (spotFeatureWeightVector.isDefined)
+    {println("Surface form score: " + score._2 + " confidence : " + confidence)
        if(score._2 >= confidence)
          score._1
        else
-        None
+         None}
     else
       if(score._2 >= 0.25)
         score._1
