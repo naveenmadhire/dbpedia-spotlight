@@ -149,7 +149,7 @@ abstract class DBSpotter(
        if(score._2 >= confidence)
          score._1
        else
-         None
+        None
     else
       if(score._2 >= 0.25)
         score._1
