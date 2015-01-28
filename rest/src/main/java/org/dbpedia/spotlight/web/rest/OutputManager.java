@@ -131,7 +131,8 @@ public class OutputManager {
             atts.addAttribute("","","offset","CDATA",String.valueOf(occ.textOffset()));
             atts.addAttribute("", "", "similarityScore", "CDATA", String.valueOf(occ.similarityScore()));
             atts.addAttribute("","","percentageOfSecondRank","CDATA",String.valueOf(occ.percentageOfSecondRank()));
-
+            atts.addAttribute("","","annotationProbability","CDATA",String.valueOf(occ.surfaceForm().annotationProbability()));
+            atts.addAttribute("","","contextualScore","CDATA",String.valueOf(occ.contextualScore()));
             hd.startElement("","","Resource",atts);
             hd.endElement("","","Resource");
             i++;
