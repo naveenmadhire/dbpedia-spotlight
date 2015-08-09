@@ -2,6 +2,7 @@ package org.dbpedia.spotlight.db
 
 import memory.MemoryStore
 import org.dbpedia.spotlight.model._
+import org.dbpedia.spotlight.model.SurfaceFormOccurrence
 import model.{TextTokenizer, StringTokenizer, SurfaceFormStore}
 import opennlp.tools.util.Span
 import scala.collection.mutable.{ListBuffer, ArrayBuffer, Map}
@@ -14,11 +15,11 @@ import util.control.Breaks._
  */
 
 class FSASpotter(
-  fsaDictionary: FSADictionary,
-  surfaceFormStore: SurfaceFormStore,
-  spotFeatureWeights: Option[Seq[Double]],
-  stopwords: Set[String]
-) extends DBSpotter(surfaceFormStore, spotFeatureWeights, stopwords) {
+                  fsaDictionary: FSADictionary,
+                  surfaceFormStore: SurfaceFormStore,
+                  spotFeatureWeights: Option[Seq[Double]],
+                  stopwords: Set[String]
+                  ) extends DBSpotter(surfaceFormStore, spotFeatureWeights, stopwords) {
 
   def generateCandidates(sentence: List[Token]): Seq[Span] = {
     val initialSpans = findUppercaseSequences(sentence.map(_.token).toArray)
@@ -38,11 +39,12 @@ class FSASpotter(
 class AllOccurrencesFSASpotter(
                                 fsaDictionary: FSADictionary,
                                 tokenizer: TextTokenizer
-                                ) {
+                                ) extends Serializable{
 
-  def extract(text: String): List[(java.lang.String, Int)] = {
+  def extract(text: String, sfs: List[SurfaceFormOccurrence]): List[(String,Int)] = {
 
-    var spots = ListBuffer[(String, Int)]()
+    var spots = ListBuffer[SurfaceFormOccurrence]()
+
     val sentences: List[List[Token]] = DBSpotter.tokensToSentences(tokenizer.tokenize(new Text(text)))
 
     //Go through all sentences
@@ -52,13 +54,56 @@ class AllOccurrencesFSASpotter(
         val lastToken = chunkSpan.getEnd-1
         val startOffset = sentence(firstToken).offset
         val endOffset = sentence(lastToken).offset + sentence(lastToken).token.length
-
-        spots += ((text.substring(startOffset, endOffset), startOffset))
+        val spotToAdd = new SurfaceFormOccurrence(new SurfaceForm(text.substring(startOffset, endOffset)),
+          new Text(text),
+          startOffset,Provenance.Annotation,-1)
+        spotToAdd.setFeature(new Nominal("spot_type", "fake"))
+        spots += spotToAdd
       })
     }
 
-    spots.toList
+    //Adding the real links spots to the spotter returned spots
+    sfs.foreach(sf => spots +=sf)
+
+    //spots.toList
+    val sortedSpots = spots.distinct.sortBy(sf => (sf.textOffset, sf.surfaceForm.name.length))
+    var remove = Set[Int]()
+    var lastSpot: SurfaceFormOccurrence = null
+
+    val sfsLookop = sfs.map(_.surfaceForm.name).toSet
+    var i = 0
+
+    while (i < sortedSpots.size) {
+      val spot = sortedSpots(i)
+      if (lastSpot != null && lastSpot.intersects(spot)){
+        val spotFeatures = Array({if (spot.featureValue[String]("spot_type").equals("real")) 1 else 0},{if (sfsLookop.contains(spot.surfaceForm.name)) 1 else 0},
+        { if (spot.surfaceForm.name.length > lastSpot.surfaceForm.name.length) 1 else 0})
+
+        val lastSpotFeatures = Array({if (lastSpot.featureValue[String]("spot_type").equals("real")) 1 else 0},{if (sfsLookop.contains(lastSpot.surfaceForm.name)) 1 else 0},
+        { if (spot.surfaceForm.name.length < lastSpot.surfaceForm.name.length) 1 else 0})
+
+        if ( (Integer.parseInt(spotFeatures.mkString,2)) >= ((Integer.parseInt(lastSpotFeatures.mkString,2)))){
+          remove += i -1
+        }
+        else {
+          remove += i
+        }
+      }
+      lastSpot = spot
+      i += 1
+
+    }
+
+    var list = ListBuffer[SurfaceFormOccurrence]()
+    sortedSpots.zipWithIndex.foreach{ case (s: SurfaceFormOccurrence, i: Int) =>
+      if(!remove.contains(i))
+        list +=s
+    }
+
+    list.toList.map(sfOcc => (sfOcc.surfaceForm.name,sfOcc.textOffset))
   }
+
+
 }
 
 object FSASpotter {
