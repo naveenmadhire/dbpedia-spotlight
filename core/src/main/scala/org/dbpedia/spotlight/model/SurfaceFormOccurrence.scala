@@ -20,7 +20,7 @@ class SurfaceFormOccurrence(val surfaceForm : SurfaceForm,
                             val context : Text,
                             var textOffset : Int,
                             val provenance : Provenance.Value,
-                            var spotProb : Double = -1) extends HasFeatures with Ordered[SurfaceFormOccurrence]
+                            var spotProb : Double = -1) extends HasFeatures with Ordered[SurfaceFormOccurrence] with Serializable
 {
 
 

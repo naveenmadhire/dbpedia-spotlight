@@ -22,7 +22,7 @@ package org.dbpedia.spotlight.model
  * Our pipeline operates on objects of this class by adding annotations.
  */
 
-class Text(var text : String) extends HasFeatures {
+class Text(var text : String) extends HasFeatures with Serializable {
     // do some clean up on the text
     text = text.replace("’", "'")
 
