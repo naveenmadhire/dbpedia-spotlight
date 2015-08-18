@@ -114,7 +114,8 @@ object DBpediaResourceSource {
       line: String => {
         try {
           val Array(wikiurl, count) = line.trim().split('\t')
-          val res = new DBpediaResource(wikipediaToDBpediaClosure.wikipediaToDBpediaURI(normalizePigURI(wikiurl)))
+          //val res = new DBpediaResource(wikipediaToDBpediaClosure.wikipediaToDBpediaURI(normalizePigURI(wikiurl)))
+          val res = new DBpediaResource(normalizePigURI(wikiurl))
 
           resourceByURI.get(res.uri) match {
             case Some(oldRes) => {

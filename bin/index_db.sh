@@ -89,9 +89,9 @@ mkdir -p $WDIR
 echo "Downloading DBpedia dumps..."
 cd $WDIR
 if [ ! -f "redirects.nt" ]; then
-  curl -# http://downloads.dbpedia.org/current/$LANGUAGE/redirects_$LANGUAGE.nt.bz2 | bzcat > redirects.nt
-  curl -# http://downloads.dbpedia.org/current/$LANGUAGE/disambiguations_$LANGUAGE.nt.bz2 | bzcat > disambiguations.nt
-  curl -# http://downloads.dbpedia.org/current/$LANGUAGE/instance_types_$LANGUAGE.nt.bz2 | bzcat > instance_types.nt
+  curl -# http://downloads.dbpedia.org/current/core-i18n/$LANGUAGE/redirects_$LANGUAGE.nt.bz2 | bzcat > redirects.nt
+  curl -# http://downloads.dbpedia.org/current/core-i18n/$LANGUAGE/disambiguations_$LANGUAGE.nt.bz2 | bzcat > disambiguations.nt
+  curl -# http://downloads.dbpedia.org/current/core-i18n/$LANGUAGE/instance_types_$LANGUAGE.nt.bz2 | bzcat > instance_types.nt
 fi
 
 
@@ -119,23 +119,6 @@ fi
 
 cd $BASE_WDIR
 
-#Set up pig:
-#if [ -d $BASE_WDIR/pig ]; then
-#    echo "Updating PigNLProc..."
-#    cd $BASE_WDIR/pig/pignlproc
-#    git reset --hard HEAD
-#    git pull
-#    mvn -T 1C -q assembly:assembly -Dmaven.test.skip=true
-#else
-#    echo "Setting up PigNLProc..."
-#    mkdir -p $BASE_WDIR/pig/
-#    cd $BASE_WDIR/pig/
-#    git clone --depth 1 https://github.com/dbpedia-spotlight/pignlproc.git
-#    cd pignlproc
-#    echo "Building PigNLProc..."
-#    mvn -T 1C -q assembly:assembly -Dmaven.test.skip=true
-#fi
-
 #Set up DBPedia WikiStats:
 if [ -d $BASE_WDIR/wikistats ]; then
     cd $BASE_WDIR/wikistats/wikipedia-stats-extractor
@@ -147,7 +130,7 @@ else
     #Using Temporary Repo
     git clone https://github.com/naveenmadhire/json-wikipedia-dbspotlight
     cd json-wikipedia-dbspotlight
-    mvn -T 1C -q assembly:assembly -Dmaven.test.skip=true
+    mvn -T 1C -q install -Dmaven.test.skip=true
     echo "Setting up WikiStats Repo..."
     mkdir -p $BASE_WDIR/wikistats/
     cd $BASE_WDIR/wikistats/
@@ -155,7 +138,7 @@ else
     git clone --depth 1 https://github.com/naveenmadhire/wikipedia-stats-extractor
     cd wikipedia-stats-extractor
     echo "Building WikiStats Repo"
-    mvn -T 1C -q assembly:assembly -Dmaven.test.skip=true
+    mvn -T 1C -q install -Dmaven.test.skip=true
 fi
 
 
@@ -164,22 +147,9 @@ set -e
 
 if [ "$local_mode" == "true" ]; then
 
-  #if [ ! -e "$BASE_WDIR/pig/pig-0.10.1/" ]; then
-    #Install pig:
-  #  cd $BASE_WDIR/pig
-  #  wget http://archive.apache.org/dist/pig/pig-0.10.1/pig-0.10.1-src.tar.gz
-  #  tar xvzf pig-0.10.1-src.tar.gz
-  #  rm pig-0.10.1-src.tar.gz
-  #  cd pig-0.10.1-src
-  #  ant jar
-  #fi
-
-  #export PATH=$BASE_WDIR/pig/pig-0.10.1-src/bin:$PATH
-
-  #Get the dump
   #TODO - Removing the CURL for time being
   echo "Downloading the wiki file"
-  #curl -# "http://dumps.wikimedia.org/${LANGUAGE}wiki/latest/${LANGUAGE}wiki-latest-pages-articles.xml.bz2" | bzcat > $WDIR/${LANGUAGE}wiki-latest-pages-articles.xml
+  curl -# "http://dumps.wikimedia.org/${LANGUAGE}wiki/latest/${LANGUAGE}wiki-latest-pages-articles.xml.bz2" | bzcat > $WDIR/${LANGUAGE}wiki-latest-pages-articles.xml
 
 else
   #Load the dump into HDFS:
@@ -234,56 +204,9 @@ fi
 
 #Adapt pig params:
 cd $BASE_DIR
-#cd $1/pig/pignlproc
 cd $1/wikistats/wikipedia-stats-extractor
 
-#PIGNLPROC_JAR="$BASE_WDIR/pig/pignlproc/target/pignlproc-0.1.0-SNAPSHOT.jar"
-WIKISTATS_JAR="$BASE_WDIR/wikistats/wikipedia-stats-extractor/target/wikipedia-stats-extractor-1.0-SNAPSHOT-jar-with-dependencies.jar"
-
-#if [ "$local_mode" == "true" ]; then
-
-#  mkdir -p $WDIR/pig_out/$LANGUAGE
-
-#  PIG_INPUT="$WDIR/${LANGUAGE}wiki-latest-pages-articles.xml"
-#  PIG_STOPWORDS="$WDIR/stopwords.$LANGUAGE.list"
-#  TOKEN_OUTPUT="$WDIR/pig_out/$LANGUAGE/tokenCounts"
-#  PIG_TEMPORARY_SFS="$WDIR/pig_out/$LANGUAGE/sf_lookup"
-#  PIG_NE_OUTPUT="$WDIR/pig_out/$LANGUAGE/names_and_entities"
-
-#  PIG_LOCAL="-x local"
-
-#else
-
-#  PIG_INPUT="/user/$USER/${LANGUAGE}wiki-latest-pages-articles.xml"
-#  PIG_STOPWORDS="/user/$USER/stopwords.$LANGUAGE.list"
-#  TOKEN_OUTPUT="/user/$USER/$LANGUAGE/tokenCounts"
-#  PIG_TEMPORARY_SFS="/user/$USER/$LANGUAGE/sf_lookup"
-#  PIG_NE_OUTPUT="/user/$USER/$LANGUAGE/names_and_entities"
-
-  #PIG_LOCAL=""
-
-#fi
-
-#Run pig:
-#pig $PIG_LOCAL -param LANG="$LANGUAGE" \
-#    -param LOCALE="$2" \
-#    -param INPUT="$PIG_INPUT" \
-#    -param OUTPUT="$PIG_NE_OUTPUT" \
-#    -param TEMPORARY_SF_LOCATION="$PIG_TEMPORARY_SFS" \
-#    -param PIGNLPROC_JAR="$PIGNLPROC_JAR" \
-#    -param MACROS_DIR="$BASE_WDIR/pig/pignlproc/examples/macros/" \
-#    -m examples/indexing/names_and_entities.pig.params examples/indexing/names_and_entities.pig
-
-
-#pig $PIG_LOCAL -param LANG="$LANGUAGE" \
-#    -param ANALYZER_NAME="$4Analyzer" \
-#    -param INPUT="$PIG_INPUT" \
-#    -param OUTPUT_DIR="$TOKEN_OUTPUT" \
-#    -param STOPLIST_PATH="$PIG_STOPWORDS" \
-#    -param STOPLIST_NAME="stopwords.$LANGUAGE.list" \
-#    -param PIGNLPROC_JAR="$PIGNLPROC_JAR" \
-#    -param MACROS_DIR="$BASE_WDIR/pig/pignlproc/examples/macros/" \
-#    -m examples/indexing/token_counts.pig.params examples/indexing/token_counts.pig
+WIKISTATS_JAR="$WDIR/wikistats/wikipedia-stats-extractor/target/wikipedia-stats-extractor-1.0-SNAPSHOT-jar-with-dependencies.jar"
 
 if [ "$local_mode" == "true" ]; then
 
@@ -300,17 +223,14 @@ if [ "$local_mode" == "true" ]; then
   fi
 
   cd $WDIR/spark-1.4.1-bin-hadoop2.6/bin
-  ./spark-submit --class org.dbpedia.spotlight.wikistats.main --master local[*] --conf spark.sql.shuffle.partitions=50 $WIKISTATS_JAR $INPUT $STOPWORDS ${LANGUAGE} $WDIR/ EnglishStemmer
+  ./spark-submit --class org.dbpedia.spotlight.wikistats.main --master local[*] --conf spark.sql.shuffle.partitions=50 $WIKISTATS_JAR $INPUT $STOPWORDS ${LANGUAGE} $WDIR/ $4Stemmer
 
 else
 
   INPUT="/user/$USER/${LANGUAGE}wiki-latest-pages-articles.xml"
   STOPWORDS="/user/$USER/stopwords.$LANGUAGE.list"
 
-  curl -# "http://apache.mirrorcatalogs.com/spark/spark-1.4.1/spark-1.4.1-bin-hadoop2.6.tgz"  > /user/$USER/
-  tar -xvf /user/$USER/spark-1.4.1-bin-hadoop2.6.tgz
-  cd /user/$USER/spark-1.4.1-bin-hadoop2.6/bin
-  ./spark-submit --class org.dbpedia.spotlight.wikistats.main --master "Master URL" --conf spark.sql.shuffle.partitions=6 $WIKISTATS_JAR $INPUT $STOPWORDS ${LANGUAGE} $WDIR/ EnglishStemmer
+  ./spark-submit --class org.dbpedia.spotlight.wikistats.main --master localhost --conf spark.sql.shuffle.partitions=50 $WIKISTATS_JAR $INPUT $STOPWORDS ${LANGUAGE} $WDIR/ $4Stemmer
 fi
 
 #Copy results to local:

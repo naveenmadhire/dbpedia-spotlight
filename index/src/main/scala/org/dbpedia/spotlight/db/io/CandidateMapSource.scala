@@ -42,7 +42,8 @@ object CandidateMapSource {
       line: String => {
         try {
           val Array(sf, wikiurl, count) = line.trim().split('\t')
-          val uri = wikipediaToDBpediaClosure.wikipediaToDBpediaURI(DBpediaResourceSource.normalizePigURI(wikiurl))
+          //val uri = wikipediaToDBpediaClosure.wikipediaToDBpediaURI(DBpediaResourceSource.normalizePigURI(wikiurl))
+          val uri = DBpediaResourceSource.normalizePigURI(wikiurl)
 
           val c = Pair(sfStore.getSurfaceForm(sf).id, resStore.getResourceByName(uri).id)
           val initialCount = candidateMap.get(c) match {
