@@ -102,7 +102,8 @@ object CreateSpotlightModel {
               | *-chunker.bin
               | *-pos-maxent.bin
             """.stripMargin)
-          System.exit(1)
+          //Just Commenting to avoid error if no Nlp file is present
+          //System.exit(1)
         }
       }
 
