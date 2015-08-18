@@ -23,8 +23,9 @@ usage ()
 
 opennlp="None"
 eval="false"
-data_only="false"
-local_mode="false"
+#TODO Modifying this to only get Data instead of calling Spotlight. Change Local_Mode as well
+data_only="true"
+local_mode="true"
 
 
 while getopts "ledo:" opt; do
@@ -107,14 +108,16 @@ if [ "$DATA_ONLY" != "true" ]; then
       mvn -T 1C -q clean install
   else
       echo "Setting up DBpedia Spotlight..."
-      git clone --depth 1 https://github.com/dbpedia-spotlight/dbpedia-spotlight.git
+      #TODO - To change to actual DBpedia spotlight repo.
+      git clone -b feature/scala-2.10 https://github.com/naveenmadhire/dbpedia-spotlight
+      #git clone --depth 1 https://github.com/dbpedia-spotlight/dbpedia-spotlight.git
       cd dbpedia-spotlight
       mvn -T 1C -q clean install
   fi
 
 fi
 
-cd $BASE_DIR
+cd $BASE_WDIR
 
 #Set up pig:
 #if [ -d $BASE_WDIR/pig ]; then
@@ -140,10 +143,16 @@ if [ -d $BASE_WDIR/wikistats ]; then
     git pull
     mvn -T 1C -q assembly:assembly -Dmaven.test.skip=true
 else
+    echo "Setting up Json WikiPedia Repo"
+    #Using Temporary Repo
+    git clone https://github.com/naveenmadhire/json-wikipedia-dbspotlight
+    cd json-wikipedia-dbspotlight
+    mvn -T 1C -q assembly:assembly -Dmaven.test.skip=true
     echo "Setting up WikiStats Repo..."
     mkdir -p $BASE_WDIR/wikistats/
     cd $BASE_WDIR/wikistats/
-    git clone --depth 1 https://github.com/dbpedia-spotlight/wikipedia-stats-extractor
+    #git clone --depth 1 https://github.com/dbpedia-spotlight/wikipedia-stats-extractor
+    git clone --depth 1 https://github.com/naveenmadhire/wikipedia-stats-extractor
     cd wikipedia-stats-extractor
     echo "Building WikiStats Repo"
     mvn -T 1C -q assembly:assembly -Dmaven.test.skip=true
@@ -168,7 +177,9 @@ if [ "$local_mode" == "true" ]; then
   #export PATH=$BASE_WDIR/pig/pig-0.10.1-src/bin:$PATH
 
   #Get the dump
-  curl -# "http://dumps.wikimedia.org/${LANGUAGE}wiki/latest/${LANGUAGE}wiki-latest-pages-articles.xml.bz2" | bzcat > $WDIR/${LANGUAGE}wiki-latest-pages-articles.xml
+  #TODO - Removing the CURL for time being
+  echo "Downloading the wiki file"
+  #curl -# "http://dumps.wikimedia.org/${LANGUAGE}wiki/latest/${LANGUAGE}wiki-latest-pages-articles.xml.bz2" | bzcat > $WDIR/${LANGUAGE}wiki-latest-pages-articles.xml
 
 else
   #Load the dump into HDFS:
@@ -278,11 +289,18 @@ if [ "$local_mode" == "true" ]; then
 
   INPUT="$WDIR/${LANGUAGE}wiki-latest-pages-articles.xml"
   STOPWORDS="$WDIR/stopwords.$LANGUAGE.list"
+  echo "Downloading the latest spark version"
 
-  curl -# "http://apache.mirrorcatalogs.com/spark/spark-1.4.1/spark-1.4.1-bin-hadoop2.6.tgz"  > $WDIR/
-  tar -xvf $WDIR/spark-1.4.1-bin-hadoop2.6.tgz
+  if [ -d $WDIR/spark-1.4.1-bin-hadoop2.6 ]; then
+    echo "Spark directory already present"
+  else
+    echo "Downloading the Spark directory from the Apache Spark website"
+    curl -# "http://apache.mirrorcatalogs.com/spark/spark-1.4.1/spark-1.4.1-bin-hadoop2.6.tgz"  > $WDIR/spark-1.4.1-bin-hadoop2.6.tgz
+    tar -xvf $WDIR/spark-1.4.1-bin-hadoop2.6.tgz
+  fi
+
   cd $WDIR/spark-1.4.1-bin-hadoop2.6/bin
-  ./spark-submit --class org.dbpedia.spotlight.wikistats.main --master local[5] --conf spark.sql.shuffle.partitions=6 $WIKISTATS_JAR $INPUT $STOPWORDS ${LANGUAGE} $WDIR/ EnglishStemmer
+  ./spark-submit --class org.dbpedia.spotlight.wikistats.main --master local[*] --conf spark.sql.shuffle.partitions=50 $WIKISTATS_JAR $INPUT $STOPWORDS ${LANGUAGE} $WDIR/ EnglishStemmer
 
 else
 
